@@ -266,37 +266,3 @@
 
 #####
 
-
-
-
-
-
-
-
-#####
-DepositAndApprove()     =========>>>>>>>   
-1. 
-  * Any User Can Call This Function And Supply The Collateralizable Address     OR    
-    + User duplicates the arrays, either tokenAddresses or tokenAmounts
-      + tokenAddresses[0] = AMP, tokenAddresses[1] = AMP, tokenAddresses[2] = AMP    ===>>>> ???? Nothing will happen
-  
-  
-  * The Collateralizable Address Can Call Itself, And Supply Its Collateralizable Address
-
-`We have 2 types of collateral: Reserve And Claimable collateral`
-
-`{ CollateralBalance { available: is increased via deposits}}....`
-` { CollateralToken {cumulativeUserBalance: is increased via deposit}}.......`
-
-- # NOTE:::::: `Whenever we are modifying the reserve collateral, these steps should be taken:`
-  `1. If Decreasing  =====>>>CollateralBalance.reserved must decrease by the modifying amount; CollateralBalance.available must increase by modifying amount`. + `CollateralReservations.tokenAmount must decrease by modifying amount`
-  `2. If increasing, CollateralBalance.reserved must increase by modifying amount;  CollateralBalance.available must decrease by modifying amount`. + `CollateralReservations.tokenAmount must increase by modifying amount`.
-
-
-
-
-#### Potential Flaw
-* If we are moving collateral, decrease the reserved Collateral, and increase the available   ====>>>> so user can get via Withdraw (all available).... In this case, 
-cumulative user deposits is decremented.
-* OR we can just decrease the reserved collateral, and transfer straight away to user using safeTransfer(tokens), and then updates cumulative User deposits because 
-tokens have left the contract.
