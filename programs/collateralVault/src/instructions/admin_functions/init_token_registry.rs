@@ -8,6 +8,7 @@ pub fn init_tokens_registry_and_collateralizable_contracts(ctx: Context<Supporte
 
     let tokens_registry = &mut ctx.accounts.tokens_registry;
     let collateralizable_contracts = &mut ctx.accounts.collateralizable_contracts;
+    let collateral_reservation_nonce = &mut ctx.accounts.collateral_reservations_nonce;
 
     // Let's initialize the collection vector
     tokens_registry.collateral_tokens = Vec::new();
@@ -16,6 +17,9 @@ pub fn init_tokens_registry_and_collateralizable_contracts(ctx: Context<Supporte
     // Let's
     collateralizable_contracts.collaterizable_contracts = Vec::new();
     collateralizable_contracts.collaterizable_contracts_bump = ctx.bumps.collateralizable_contracts;
+
+    // Initialize CR Nonce counter
+    collateral_reservation_nonce.nonce = 0;
     
     Ok(())
 }

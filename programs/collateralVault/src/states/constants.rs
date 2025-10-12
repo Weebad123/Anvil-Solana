@@ -1,0 +1,1 @@
+pub const WITHDRAWAL_FEE_BASIS_POINTS: usize = 50;

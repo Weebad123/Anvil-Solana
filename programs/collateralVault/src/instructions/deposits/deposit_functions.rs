@@ -1,11 +1,9 @@
 use anchor_lang::{prelude::*, solana_program::{self, program_pack::Pack, rent::Rent}};
 use solana_program::pubkey::Pubkey;
 
-use anchor_spl::{associated_token::{create_idempotent, get_associated_token_address, Create}, 
-token::spl_token::state::Mint,
-token_interface::{ TransferChecked, transfer_checked}};
+use anchor_spl::{associated_token::{Create, create_idempotent, get_associated_token_address}, token::spl_token::state::Mint, token_interface::{ TransferChecked, transfer_checked}};
 
-use crate::{states::{errors::*, user_contexts::*}, AccountsBalance};
+use crate::{states::{errors::*, user_contexts::*}, AccountCollateralizableAllowance, AccountsBalance};
 
 
 // Deposit And Approve
@@ -13,10 +11,10 @@ pub fn deposit_plus_approve<'info>(mut ctx: Context<'_, '_, 'info, 'info, Deposi
     token_amounts: Vec<u64>, collateralizable_contract_address_to_approve: Pubkey) -> Result<()> {
 
         // Get The Various Accounts
-    let collateralizable_contracts = &ctx.accounts.collateralizable_contracts;
+    let all_collateralizable_contracts = &ctx.accounts.collateralizable_contracts;
 
     // Ensure The Collateralizable Contract Is Approved
-    require!(collateralizable_contracts.collaterizable_contracts
+    require!(all_collateralizable_contracts.collaterizable_contracts
         .contains(&collateralizable_contract_address_to_approve), CollateralVaultError::UnapprovedCollateralizableContract);
 
     // Call Deposit To Account
@@ -31,7 +29,7 @@ pub fn deposit_plus_approve<'info>(mut ctx: Context<'_, '_, 'info, 'info, Deposi
             msg_sender.key(),
             collateralizable_contract_address_to_approve,
             token_addresses[i],
-            token_amounts[i]//should be negative: original call => Pricing.safeCastToInt256(amounts[i]). would have to implement the same method.
+            token_amounts[i] as i64//should be negative: original call => Pricing.safeCastToInt256(amounts[i]). would have to implement the same method.
         )?;
     }
     Ok(())
@@ -85,9 +83,9 @@ fn deposit<'info>(ctx: &mut Context<'_, '_, 'info, 'info, DepositAndApprove<'inf
         .ok_or(CollateralVaultError::TokenOverflowError)?;
     
     // Create Program's Token Vault To Hold Deposited Tokens
-    let token_mint_info = &ctx.remaining_accounts[2];
-    let callers_token_ata_account = &ctx.remaining_accounts[3];
-    let bank_token_vault_ata = &ctx.remaining_accounts[4];
+    let token_mint_info = &ctx.remaining_accounts[0];
+    let callers_token_ata_account = &ctx.remaining_accounts[1];
+    let bank_token_vault_ata = &ctx.remaining_accounts[2];
 
     let token_decimals = Mint::unpack(&token_mint_info.try_borrow_data()?)?.decimals;
 
@@ -130,12 +128,40 @@ fn deposit<'info>(ctx: &mut Context<'_, '_, 'info, 'info, DepositAndApprove<'inf
 // Private approveModifyCollateralizableTokenAllowance
 fn authorized_modify_collateralizable_token_allowance<'info>(
     ctx: &mut Context<'_, '_, 'info, 'info, DepositAndApprove<'info>>,
-    msg_sender: Pubkey,
-    collateralizable_contract_address_to_approve: Pubkey,
+    account_address: Pubkey,
+    collateralizable_contract_address: Pubkey,
     token_address: Pubkey,
-    token_amount: u64
+    by_amount: i64
 ) -> Result<()> {
     
+    let mut new_allowance: u64;
+
+    // GET ACCOUNT_COLLATERALIZABLE_TOKEN_ALLOWANCES
+    let current_allowance = 
+        account_collateralizable_token_allowance(ctx, account_address, collateralizable_contract_address, token_address)?.current_allowance;
+
+    if by_amount > 0 {
+        new_allowance = current_allowance.wrapping_add(by_amount as u64);
+
+        if new_allowance < current_allowance {
+            // This means there was overflow, but the intention was to increase allowance, so we set allowance to highest integer type
+            new_allowance = u64::MAX;
+        }
+    } else {
+        new_allowance = current_allowance.wrapping_sub(by_amount.wrapping_abs() as u64);
+
+        if new_allowance > current_allowance {
+            // This means there was underflow, but the intentin was to decrease allowance, so we set the allowance to zero
+            new_allowance = 0;
+        }
+    }
+
+    // Update The Allowance
+    if new_allowance != current_allowance {
+        account_collateralizable_token_allowance(ctx, account_address, collateralizable_contract_address, token_address)?.current_allowance = new_allowance;
+    }
+
+    // EMIT THE EVENT
     Ok(())
 }
 
@@ -147,8 +173,7 @@ fn create_or_get_account_balance_pda<'info>(ctx: &mut Context<'_, '_, 'info,'inf
     // Let's Try And Get The PDA
     let owner_address = user.key();
     let token = token_address.key();
-    //let caller = &ctx.accounts.caller;
-    //let system_prog = &ctx.accounts.system_program;
+
     let (account_balance_pda, account_pda_bump) = Pubkey::find_program_address(
         &[b"account_balance_pda", owner_address.as_ref(), token.as_ref()],
         ctx.program_id
@@ -171,7 +196,8 @@ fn create_or_get_account_balance_pda<'info>(ctx: &mut Context<'_, '_, 'info,'inf
             &account_balance_pda,
             lamports,
             space as u64,
-            &solana_program::system_program::ID
+           // &solana_program::system_program::ID
+           &*ctx.program_id
         );
 
         let accounts_needed_for_creation = &[
@@ -197,6 +223,22 @@ fn create_or_get_account_balance_pda<'info>(ctx: &mut Context<'_, '_, 'info,'inf
         
     }
 
+    let disc = AccountsBalance::DISCRIMINATOR;
+    let initial_state = AccountsBalance {
+        ..Default::default()
+    };
+    let serialized = initial_state.try_to_vec()?;
+    {
+        let mut data = pda_account_balance.try_borrow_mut_data()?;
+        //require!(data.len() > 8, CollateralVaultError::PDAAccountNotFound);
+
+        data[0..8].copy_from_slice(&disc);
+        data[8..8 + serialized.len()].copy_from_slice(&serialized);
+    }
+
+    msg!("The owner of this PDA is: {}", pda_account_balance.to_account_info().owner);
+    msg!("The data length of this PDA is: {}", pda_account_balance.to_account_info().data_len());
+    
     // Deserialize The Account, and Return The Deserialized Account
     let account_balance_storage: Account<AccountsBalance> = Account::try_from(pda_account_balance)?;
 
@@ -205,6 +247,73 @@ fn create_or_get_account_balance_pda<'info>(ctx: &mut Context<'_, '_, 'info,'inf
 }
 
 
-/*
-1. We have a Collateral Balance with fields: {available, reserved all uint256} 
-2. A mapping of token address and msg_sender to Collateral Balance*/
+fn account_collateralizable_token_allowance<'info>(ctx: &mut Context<'_, '_, 'info,'info, DepositAndApprove<'info>>, 
+    account_address: Pubkey, collateralizable_contract_address: Pubkey, token_address: Pubkey) -> Result<Account<'info, AccountCollateralizableAllowance>> {
+
+        let (account_collateralizable_token_allowance_pda, account_collateralizable_token_bump) = Pubkey::find_program_address(
+             &[account_address.as_ref(), collateralizable_contract_address.as_ref(), token_address.as_ref()],
+            ctx.program_id,
+        );
+        let pda_account_collateralizable_allowance = ctx.remaining_accounts
+            .iter()
+            .find(|account| account.key() == account_collateralizable_token_allowance_pda)
+            .ok_or(CollateralVaultError::MismatchedAllowancePDA)?;
+
+        require!(pda_account_collateralizable_allowance.key() == account_collateralizable_token_allowance_pda, CollateralVaultError::MismatchedAllowancePDA);
+
+        let rent = Rent::get()?;
+        let space = 8 + AccountCollateralizableAllowance::INIT_SPACE;
+        let lamports = rent.minimum_balance(space);
+
+        
+        if pda_account_collateralizable_allowance.data_is_empty() || pda_account_collateralizable_allowance.lamports() == 0 {
+
+            let account_creation_ix = solana_program::system_instruction::create_account(
+                ctx.accounts.caller.key,
+                &account_collateralizable_token_allowance_pda,
+                lamports,
+                space as u64,
+                //&solana_program::system_program::ID
+                &*ctx.program_id
+            );
+
+            let accounts_needed_for_creation = &[
+                ctx.accounts.caller.to_account_info(),
+                pda_account_collateralizable_allowance.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ];
+
+            let seeds = &[
+                account_address.as_ref(), 
+                collateralizable_contract_address.as_ref(), 
+                token_address.as_ref(),
+                &[account_collateralizable_token_bump]
+            ];
+
+            let signer_seeds = &[&seeds[..]];
+
+            solana_program::program::invoke_signed(
+                &account_creation_ix,
+                accounts_needed_for_creation,
+                signer_seeds
+            )?;
+        }
+
+        let disc = AccountCollateralizableAllowance::DISCRIMINATOR;
+        let initial_state = AccountCollateralizableAllowance {
+            ..Default::default()
+        };
+        let serialized = initial_state.try_to_vec()?;
+        {
+            let mut data = pda_account_collateralizable_allowance.try_borrow_mut_data()?;
+            data[0..8].copy_from_slice(&disc);
+            data[8..8 + serialized.len()].copy_from_slice(&serialized);
+        }
+
+        let account_collateralizable_token_allowance_storage: Account<AccountCollateralizableAllowance> = Account::try_from(
+            &pda_account_collateralizable_allowance
+        )?;
+        
+
+        Ok(account_collateralizable_token_allowance_storage)
+    }

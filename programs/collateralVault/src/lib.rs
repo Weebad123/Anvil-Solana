@@ -2,9 +2,11 @@ use anchor_lang::prelude::*;
 
 pub mod instructions;
 pub mod states;
+pub mod utils;
 
 pub use instructions::*;
 pub use states::*;
+pub use utils::*;
 
 declare_id!("FCeHw6gbVhHR2NFwxjz2Ayu3VNC8spsJsdq9M5ybQQjV");
 
@@ -41,6 +43,32 @@ pub mod collateral_vault {
 
             Ok(())
         }
+
+
+     // Deposit To Account Function
+    #[access_control(only_enabled_collateral_tokens(&ctx, &token_addresses))]
+    pub fn deposit_to_account_ext<'info>(ctx: Context<'_, '_, 'info, 'info, DepositAndApprove<'info>>, account_address: Pubkey,
+    token_addresses: Vec<Pubkey>, token_amounts: Vec<u64>) -> Result<()> {
+
+
+        // Let's Call The Deposit To Account
+        let mut ctx = ctx;
+        instructions::deposits::deposit_to_account(&mut ctx, account_address, &token_addresses, &token_amounts)?;
+
+        Ok(())
+    }
+
+
+    // RESERVE COLLATERAL
+    //#[access_control(only_enabled_collateral_tokens(&ctx, [&ctx.accounts.token_address.key()]))]
+    pub fn reserve_collateral_ext<'info>(ctx: Context<'_, '_, 'info, 'info, ReserveCollateral<'info>>, 
+    account_address: Pubkey, amount: u64) -> Result<()> {
+
+        let mut ctx = ctx;
+        instructions::reserve_collateral(&mut ctx, account_address, amount)?;
+
+        Ok(())
+    }
 }
 
 

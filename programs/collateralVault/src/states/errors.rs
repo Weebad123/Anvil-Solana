@@ -35,4 +35,19 @@ pub enum CollateralVaultError {
 
     #[msg("Caller's Derived Token Account Via Remaining Accounts Differs From Token Account")]
     MismatchedTokenAccounts,
+
+    #[msg("Account-Collateralizable PDA Address Mismatches")]
+    MismatchedAllowancePDA,
+
+    #[msg("Claimable Collateral Amount Must Not Be Zero")]
+    ClaimableAmountZero,
+
+    #[msg("Reserving Contract And Account Address Are Same")]
+    SameAsReservingContract,
+
+    #[msg("Allowance on Reserving Contract Is Insufficient")]
+    InsufficientAllowance,
+
+    #[msg("Insufficient Collateral On Account Address")]
+    InsufficientCollateral,
 }

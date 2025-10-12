@@ -12,7 +12,16 @@ pub struct SupportedTokenRegistryAndCollateralizbleContracts<'info> {
     #[account(
         init,
         payer = admin,
-        space = 8 + TokenRegistry::SPACE,
+        space = 8 + CollateralizableContracts::INIT_SPACE,
+        seeds = [b"collateralizable_contracts"],
+        bump,
+    )]
+    pub collateralizable_contracts: Account<'info, CollateralizableContracts>,
+
+    #[account(
+        init,
+        payer = admin,
+        space = 8 + TokenRegistry::INIT_SPACE,
         seeds = [b"supported_token_registry"],
         bump,
     )]
@@ -21,11 +30,11 @@ pub struct SupportedTokenRegistryAndCollateralizbleContracts<'info> {
     #[account(
         init,
         payer = admin,
-        space = 8 + CollateralizableContracts::INIT_SPACE,
-        seeds = [b"collateralizable_contracts"],
-        bump,
+        space = 8 + CollateralReservationsNonce::INIT_SPACE,
+        seeds = [b"collateral_reservations_nonce"],
+        bump
     )]
-    pub collateralizable_contracts: Account<'info, CollateralizableContracts>,
+    pub collateral_reservations_nonce: Account<'info, CollateralReservationsNonce>,
 
     pub system_program: Program<'info, System>,
 }
