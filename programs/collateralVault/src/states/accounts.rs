@@ -1,5 +1,6 @@
-use anchor_lang::{ZeroCopy, prelude::*};
-//use anchor_spl::token::Token;
+use anchor_lang:: prelude::*;
+use bytemuck::{Zeroable, Pod};
+
 pub const MAX_TOKENS: usize = 20;
 
 
@@ -11,8 +12,8 @@ pub struct CollateralToken {
     pub is_enabled: bool
 }
 
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, InitSpace, Default, PartialEq)]
+#[repr(C)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Zeroable, Pod, InitSpace, Default, PartialEq)]
 pub struct CollateralBalance {
     pub available: u64,
 
@@ -20,12 +21,15 @@ pub struct CollateralBalance {
 }
 
 // We Need To Create an [accountsBalance] PDA to track the total Available and Reserved of A user's token Balance
-#[account]
+#[account(zero_copy)]
+#[repr(C)]
 #[derive(InitSpace, Default)]
 pub struct AccountsBalance {
     pub collateral_balance: CollateralBalance,
 
     pub bump_accounts_balance: u8,
+
+    pub padding: [u8;7],
 
 }
 
@@ -49,11 +53,12 @@ pub struct BankVaultAuthority {
     pub bank_vault_authority_bump: u8,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, InitSpace, Clone, Copy, PartialEq)]
+#[account]
+#[derive( InitSpace, Copy, PartialEq)]
 pub struct TokenEntry {
     pub token_mint: Pubkey,
 
-    pub collateral_toke: CollateralToken
+    pub collateral_token: CollateralToken
 }
 /* 
 #[account]

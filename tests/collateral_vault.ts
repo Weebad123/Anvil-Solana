@@ -3,7 +3,7 @@ import { Program } from "@coral-xyz/anchor";
 import { CollateralVault} from "../target/types/collateral_vault";
 import { LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
 import { expect } from "chai";
-import { createMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { createMint, getAccount, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { BN } from "bn.js";
 import { ASSOCIATED_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/utils/token";
 import { airdropSol } from "@lightprotocol/stateless.js";
@@ -55,6 +55,11 @@ describe("Collateral Vault", () => {
       program.programId
     );
 
+    const [collateralReservationsNoncePDA, ] = PublicKey.findProgramAddressSync(
+      [Buffer.from("collateral_reservations_nonce")],
+      program.programId
+    );
+
     await program.methods
       .initTokensAndCollateralizableRegistry()
       .accounts({
@@ -62,6 +67,7 @@ describe("Collateral Vault", () => {
         //@ts-ignore
         tokensRegistry: tokenRegistryPDA,
         collateralizableContracts: collateralizableContractsPDA,
+        collateralReservationsNonce: collateralReservationsNoncePDA,
         systemProgram: SystemProgram.programId
       })
       .signers([])
@@ -72,6 +78,9 @@ describe("Collateral Vault", () => {
     // Assertions
     const collateralizableContractsData = await program.account.collateralizableContracts.fetch(collateralizableContractsPDA);
     expect(collateralizableContractsData.collaterizableContracts.length).to.eq(0);
+    const collateralReservationsNonceData = await program.account.collateralReservationsNonce
+      .fetch(collateralReservationsNoncePDA);
+    expect(collateralReservationsNonceData.nonce.toNumber()).to.eq(0);
     //const tokenRegistryData = await program.account
     
   });
@@ -262,6 +271,13 @@ describe("Collateral Vault", () => {
       {pubkey: allowancePDAUsdc, isWritable: true, isSigner: false},
     )
 
+    const bankDaiATA = await getAccount(provider.connection, bankTokenVaultATADai.address);
+    const callerDai = await getAccount(provider.connection, callerDaiATA.address);
+    console.log("The Caller's DAI ATA Balance Before Deposit is: ", Number(callerDai.amount));
+    console.log("The Bank DAI ATA Vault Before Deposit is: ", Number(bankDaiATA.amount));
+
+    const allowancePDADaiData = await provider.connection.getAccountInfo(allowancePDADai);
+    //console.log("The Allowance PDA Dai Data is: ", allowancePDADaiData);
     // Call instruction
     await program.methods
       .depositAndApprove( [/*usdcTokenMint,*/ daiTokenMint], [/*new BN(200 * 10 ** 6),*/ new BN(300 * 10 ** 6)], collateralizableContract1.publicKey)
@@ -278,5 +294,35 @@ describe("Collateral Vault", () => {
       .remainingAccounts(remainingAccounts)
       .signers([callerOfDeposit])
       .rpc();
+
+    // Get Account Data
+    const bankDaiATAAfter = await getAccount(provider.connection, bankTokenVaultATADai.address);
+    const callerDaiAfter = await getAccount(provider.connection, callerDaiATA.address);
+    console.log("The Caller's DAI ATA Balance After Deposit is: ", Number(callerDaiAfter.amount));
+    console.log("The Bank DAI ata Vault After Deposit is: ", Number(bankDaiATAAfter.amount));
+
+    const allowancePDADaiDataAfter = await provider.connection.getAccountInfo(allowancePDADai);
+    console.log("The Allowance PDA Dai Data After is: ", allowancePDADaiDataAfter.data.toString());
+    //const collateralizableContract1Data = await program.account.collateralizableContracts
+      //.fetch(collateralizableContract1.publicKey);
+    
+    //const collateralizableContract1AllowanceDAIData = await program.account.accountsBalance.fetch(
+      //allowancePDADai
+    //);
+    //const tokenRegistryData = await program.account.
+
+    const accountBalanceDaiCContract1Data = await program.account.accountsBalance.fetch(accountBalancePDADai);
+
+    //console.log("Collateralizable Contract 1 Data is: ", collateralizableContract1Data);
+    //console.log("Collateralizable Contract 1 Allowance Data is: ", collateralizableContract1AllowanceDAIData);
+    console.log("Account Balance DAI for CC 1 is: ", accountBalanceDaiCContract1Data);
+    console.log("Account Collateral Balance Available is: ", accountBalanceDaiCContract1Data.collateralBalance.available.toNumber());
+    console.log("Account Collateral Balance Reserved is : ", accountBalanceDaiCContract1Data.collateralBalance.reserved.toNumber());
+    
   })
+
+
+  it("TEST 5 ::: Deposit To Account Function Call Testing", async () => {})
+
+  it("TEST 6 ::: Reserve Collateral Function Call Testing", async () => {})
 });

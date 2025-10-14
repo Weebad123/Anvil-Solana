@@ -106,9 +106,9 @@ pub struct ReserveCollateral<'info> {
     #[account(
         mut,
         seeds = [b"account_balance_pda", account_address.key().as_ref(), token_address.key().as_ref()],
-        bump = account_balance_pda.bump_accounts_balance
+        bump
     )]
-    pub account_balance_pda: Account<'info, AccountsBalance>,
+    pub account_balance_pda: AccountLoader<'info, AccountsBalance>,
 
     #[account(
         mut,

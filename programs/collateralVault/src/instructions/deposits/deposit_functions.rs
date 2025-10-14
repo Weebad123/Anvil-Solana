@@ -59,7 +59,8 @@ pub fn deposit_to_account<'info>(ctx: &mut Context<'_, '_, 'info, 'info, Deposit
 
 
 // Internal Deposit Implementation: This is what has the onlyEnabledCollateralTokens modifier
-fn deposit<'info>(ctx: &mut Context<'_, '_, 'info, 'info, DepositAndApprove<'info>>, transfer_source: Pubkey, account_address: Pubkey, token_address: Pubkey, amount: u64) -> Result<()> {
+fn deposit<'info>(ctx: &mut Context<'_, '_, 'info, 'info, DepositAndApprove<'info>>, 
+    transfer_source: Pubkey, account_address: Pubkey, token_address: Pubkey, amount: u64) -> Result<()> {
     // let's pull up the CollateralToken associated with the token_addresses
     let collateral_token_storage = &mut ctx.accounts.tokens_registry;
 
@@ -75,14 +76,16 @@ fn deposit<'info>(ctx: &mut Context<'_, '_, 'info, 'info, DepositAndApprove<'inf
         }
 
     // Let's Create The AccountsBalance PDA to track the available and reserved
-    let mut account_balance_storage = create_or_get_account_balance_pda(ctx,account_address, token_address)?;
+    let account_balance = create_or_get_account_balance_pda(ctx,account_address, token_address)?;
 
+    let mut account_balance_storage = account_balance.load_mut()?;
     // Update The Available
     account_balance_storage.collateral_balance.available = account_balance_storage.collateral_balance.available
         .checked_add(amount)
         .ok_or(CollateralVaultError::TokenOverflowError)?;
     
     // Create Program's Token Vault To Hold Deposited Tokens
+    // //! @todo hardcoding the remaining accounts index is wrong
     let token_mint_info = &ctx.remaining_accounts[0];
     let callers_token_ata_account = &ctx.remaining_accounts[1];
     let bank_token_vault_ata = &ctx.remaining_accounts[2];
@@ -168,7 +171,7 @@ fn authorized_modify_collateralizable_token_allowance<'info>(
 
 // Private Instruction To Create The AccountsBalance PDA;
 fn create_or_get_account_balance_pda<'info>(ctx: &mut Context<'_, '_, 'info,'info, DepositAndApprove<'info>>, user: Pubkey, token_address: Pubkey) -> 
-    Result<Account<'info, AccountsBalance>> {
+    Result<AccountLoader<'info, AccountsBalance>> {
 
     // Let's Try And Get The PDA
     let owner_address = user.key();
@@ -222,12 +225,13 @@ fn create_or_get_account_balance_pda<'info>(ctx: &mut Context<'_, '_, 'info,'inf
 
         
     }
-
+/* 
     let disc = AccountsBalance::DISCRIMINATOR;
     let initial_state = AccountsBalance {
         ..Default::default()
     };
     let serialized = initial_state.try_to_vec()?;
+    
     {
         let mut data = pda_account_balance.try_borrow_mut_data()?;
         //require!(data.len() > 8, CollateralVaultError::PDAAccountNotFound);
@@ -240,10 +244,11 @@ fn create_or_get_account_balance_pda<'info>(ctx: &mut Context<'_, '_, 'info,'inf
     msg!("The data length of this PDA is: {}", pda_account_balance.to_account_info().data_len());
     
     // Deserialize The Account, and Return The Deserialized Account
-    let account_balance_storage: Account<AccountsBalance> = Account::try_from(pda_account_balance)?;
-
+    let account_balance_storage: Account<AccountsBalance> = Account::try_from(&pda_account_balance)?;
+*/
+let account_balance_storage_loader: AccountLoader<AccountsBalance> = AccountLoader::try_from(pda_account_balance)?;
         
-    Ok(account_balance_storage)
+    Ok(account_balance_storage_loader)
 }
 
 
