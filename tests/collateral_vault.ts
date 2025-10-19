@@ -396,7 +396,12 @@ describe("Collateral Vault", () => {
     );
 
     const [collateralReservationsPDA2, ] = PublicKey.findProgramAddressSync(
-      [Buffer.from("collateral_reservations"), new BN(1).toArrayLike(Buffer, "le", 8)],
+      [Buffer.from("collateral_reservations"), new BN(2).toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+
+    const [collateralReservationsPDA3, ] = PublicKey.findProgramAddressSync(
+      [Buffer.from("collateral_reservations"), new BN(3).toArrayLike(Buffer, "le", 8)],
       program.programId
     );
 
@@ -419,8 +424,26 @@ describe("Collateral Vault", () => {
       .signers([collateralizableContract1])
       .rpc();
 
-    /*await program.methods
-      .reserveCollateralExt(callerOfDeposit.publicKey, new BN(150))
+      await program.methods
+      .reserveCollateralExt(callerOfDeposit.publicKey, new BN(18 * 10 ** 6))
+      .accounts({
+        accountAddress: callerOfDeposit.publicKey,
+        reservingContract: collateralizableContract1.publicKey,
+        tokenAddress: usdcTokenMint,
+        //@ts-ignore
+        tokensRegistry: tokenRegistryPDA,
+        collateralizableContracts: collateralizableContractsPDA,
+        accountBalancePda: accountBalancePDAUSDc,
+        accountCollateralizableAllowance: allowancePDAUsdc,
+        collateralReservationsNonce: collateralReservationsNoncePDA,
+        collateralReservations: collateralReservationsPDA2,
+        systemProgram: SystemProgram.programId
+      })
+      .signers([collateralizableContract1])
+      .rpc();
+
+    await program.methods
+      .reserveCollateralExt(callerOfDeposit.publicKey, new BN(180 * 10 ** 6))
       .accounts({
         accountAddress: callerOfDeposit.publicKey,
         reservingContract: collateralizableContract1.publicKey,
@@ -431,11 +454,11 @@ describe("Collateral Vault", () => {
         accountBalancePda: accountBalancePDADai,
         accountCollateralizableAllowance: allowancePDADai,
         collateralReservationsNonce: collateralReservationsNoncePDA,
-        collateralReservations: collateralReservationsPDA2,
+        collateralReservations: collateralReservationsPDA3,
         systemProgram: SystemProgram.programId
       })
       .signers([collateralizableContract1])
-      .rpc();*/
+      .rpc();
 
       const accountBalanceUSDCdata = await program.account.accountsBalance.fetch(accountBalancePDAUSDc);
       const accountBalanceDaidata = await program.account.accountsBalance.fetch(accountBalancePDADai);
@@ -450,5 +473,45 @@ describe("Collateral Vault", () => {
       console.log("The DAI Allowance On The Collateralizable Contract 1 is: ", allowanceDaiInfo.currentAllowance.toNumber());
       console.log("The USDC Allowance On The Collateralizable Contract 1 is: ", allowanceUsdcInfo.currentAllowance.toNumber());
       
+  })
+
+  it("TEST 7 :::  Release All Collateral Instruction Testing", async() => {
+
+    // Set Up PDAs
+    const [collateralReservationsPDA2, ] = PublicKey.findProgramAddressSync(
+      [Buffer.from("collateral_reservations"), new BN(2).toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+
+    const [accountBalancePDAUSDc, ] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("account_balance_pda"),
+        callerOfDeposit.publicKey.toBuffer(),
+        usdcTokenMint.toBuffer()
+      ],
+      program.programId
+    );
+
+    // Call Instruction
+    await program.methods
+      .releaseAllCollateralExt(new BN(2))
+      .accounts({
+        reservingContract: collateralizableContract1.publicKey,
+        tokenAddress: usdcTokenMint,
+        accountAddress: callerOfDeposit.publicKey,
+        //@ts-ignore
+        collateralReservations: collateralReservationsPDA2,
+        accountBalancePda: accountBalancePDAUSDc,
+      })
+      .signers([collateralizableContract1])
+      .rpc();
+
+    // Some Assertions And Loggings
+    const accountBalanceData = await program.account.accountsBalance.fetch(accountBalancePDAUSDc);
+    console.log("New Account Available Collateral Balance After Releasing All Collateral is: ", accountBalanceData.collateralBalance.available.toNumber());
+    console.log("New Account Reserved Collateral Balance After Releasing All Collateral Is: ", accountBalanceData.collateralBalance.reserved.toNumber());
+    const collateralReservationsData = await provider.connection.getAccountInfo(collateralReservationsPDA2);
+    expect(collateralReservationsData).to.eq(null);
+
   })
 });

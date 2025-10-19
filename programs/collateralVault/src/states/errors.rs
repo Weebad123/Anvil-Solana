@@ -53,4 +53,7 @@ pub enum CollateralVaultError {
 
     #[msg("Token Mint Address Not Found In RemainingAccounts")]
     TokenMintNotFound,
+
+    #[msg("Provided Account Address Not Found On Reservation")]
+    WrongAccountAddress,
 }

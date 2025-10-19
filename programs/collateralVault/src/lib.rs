@@ -69,6 +69,15 @@ pub mod collateral_vault {
 
         Ok(())
     }
+
+
+    // RELEASE ALL COLLATERAL 
+    pub fn release_all_collateral_ext(ctx: Context<ReleaseAllCollateral>, reservation_id: u64) -> Result<u128> {
+
+        let total_collateral_released = instructions::release_all_collateral(ctx, reservation_id)?;
+        
+        Ok(total_collateral_released)
+    }
 }
 
 

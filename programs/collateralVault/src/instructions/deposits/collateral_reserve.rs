@@ -54,7 +54,7 @@ fn reserve_collateral_internal<'info>(ctx: &mut Context<'_, '_, 'info, 'info, Re
             account_address,
             token_address: ctx.accounts.token_address.key(),
             withdrawal_fee,
-            reserved_collateral: reserved_collateral as u128,
+            token_amount: reserved_collateral as u128,
             claimable_collateral: claimable_collateral as u128,
         });
 

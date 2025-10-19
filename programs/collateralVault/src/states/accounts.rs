@@ -114,7 +114,7 @@ pub struct CollateralReservations {
 
     pub withdrawal_fee: u16,
 
-    pub reserved_collateral: u128,
+    pub token_amount: u128,
 
     pub claimable_collateral: u128,
 }
