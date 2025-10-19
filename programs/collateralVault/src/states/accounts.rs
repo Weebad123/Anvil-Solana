@@ -12,8 +12,8 @@ pub struct CollateralToken {
     pub is_enabled: bool
 }
 
-#[repr(C)]
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Zeroable, Pod, InitSpace, Default, PartialEq)]
+//#[repr(C)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, /*Zeroable, Pod,*/ InitSpace, Default, PartialEq)]
 pub struct CollateralBalance {
     pub available: u64,
 
@@ -21,8 +21,8 @@ pub struct CollateralBalance {
 }
 
 // We Need To Create an [accountsBalance] PDA to track the total Available and Reserved of A user's token Balance
-#[account(zero_copy)]
-#[repr(C)]
+#[account/*(zero_copy)*/]
+//#[repr(C)]
 #[derive(InitSpace, Default)]
 pub struct AccountsBalance {
     pub collateral_balance: CollateralBalance,
@@ -35,12 +35,15 @@ pub struct AccountsBalance {
 
 
 // Create An [AccountCollateralizableTokenAllowance] PDA to track a user's token allowance for a particular Collateralizable Contract
-#[account]
+#[account/*(zero_copy)*/]
+//#[repr(C)]
 #[derive(InitSpace, Default)]
 pub struct AccountCollateralizableAllowance {
     pub current_allowance: u64,
 
-    pub bump_account_collateralizable: u8
+    pub bump_account_collateralizable: u8,
+
+    pub padding: [u8;7],
 }
 
 // Create A Program's Bank Vault Authority To Oversee The Contract's Token Balance

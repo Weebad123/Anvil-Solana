@@ -50,4 +50,7 @@ pub enum CollateralVaultError {
 
     #[msg("Insufficient Collateral On Account Address")]
     InsufficientCollateral,
+
+    #[msg("Token Mint Address Not Found In RemainingAccounts")]
+    TokenMintNotFound,
 }

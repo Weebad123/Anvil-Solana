@@ -41,6 +41,7 @@ describe("Collateral Vault", () => {
 
   before(async () => {
     await airdropSol( callerOfDeposit.publicKey, 5);
+    await airdropSol( collateralizableContract1.publicKey, 5);
   })
 
   it("TEST 1 :::   Initialize Supported Tokens And Collateralizable Contracts Registry", async () => {
@@ -263,6 +264,9 @@ describe("Collateral Vault", () => {
     const remainingAccounts = [];
     remainingAccounts.push(
       {pubkey: daiTokenMint, isWritable: false, isSigner: false},
+      {pubkey: usdcTokenMint, isWritable: false, isSigner: false},
+      {pubkey: callerUsdcATA.address, isWritable: true, isSigner: false},
+      {pubkey: bankTokenVaultATAUsdc.address, isWritable: true, isSigner: false},
       {pubkey: callerDaiATA.address, isWritable: true, isSigner: false},
       {pubkey: bankTokenVaultATADai.address, isWritable: true, isSigner: false},
       {pubkey: accountBalancePDAUSDc, isWritable: true, isSigner: false},
@@ -273,14 +277,18 @@ describe("Collateral Vault", () => {
 
     const bankDaiATA = await getAccount(provider.connection, bankTokenVaultATADai.address);
     const callerDai = await getAccount(provider.connection, callerDaiATA.address);
+    const bankUsdcATA = await getAccount(provider.connection, bankTokenVaultATAUsdc.address);
+    const callerUsdc = await getAccount(provider.connection, callerUsdcATA.address);
     console.log("The Caller's DAI ATA Balance Before Deposit is: ", Number(callerDai.amount));
+    console.log("The Caller's USDC ATA Balance Before Deposit is: ", Number(callerUsdc.amount));
     console.log("The Bank DAI ATA Vault Before Deposit is: ", Number(bankDaiATA.amount));
+    console.log("The Bank USDC ATA Vault Balance Before Deposit is: ", Number(bankUsdcATA.amount));
 
     const allowancePDADaiData = await provider.connection.getAccountInfo(allowancePDADai);
     //console.log("The Allowance PDA Dai Data is: ", allowancePDADaiData);
     // Call instruction
     await program.methods
-      .depositAndApprove( [/*usdcTokenMint,*/ daiTokenMint], [/*new BN(200 * 10 ** 6),*/ new BN(300 * 10 ** 6)], collateralizableContract1.publicKey)
+      .depositAndApprove( [usdcTokenMint, daiTokenMint], [new BN(200 * 10 ** 6), new BN(300 * 10 ** 6)], collateralizableContract1.publicKey)
       .accounts({
         caller: callerOfDeposit.publicKey,
         //@ts-ignore
@@ -298,11 +306,15 @@ describe("Collateral Vault", () => {
     // Get Account Data
     const bankDaiATAAfter = await getAccount(provider.connection, bankTokenVaultATADai.address);
     const callerDaiAfter = await getAccount(provider.connection, callerDaiATA.address);
+    const bankUsdcATAAfter = await getAccount(provider.connection, bankTokenVaultATAUsdc.address);
+    const callerUsdcAfter = await getAccount(provider.connection, callerUsdcATA.address);
     console.log("The Caller's DAI ATA Balance After Deposit is: ", Number(callerDaiAfter.amount));
     console.log("The Bank DAI ata Vault After Deposit is: ", Number(bankDaiATAAfter.amount));
+    console.log("The Caller's USDC ATA Balance After Deposit is: ", Number(callerUsdcAfter.amount));
+    console.log("The Bank USDC ata Vault After Deposit is: ", Number(bankUsdcATAAfter.amount));
 
-    const allowancePDADaiDataAfter = await provider.connection.getAccountInfo(allowancePDADai);
-    console.log("The Allowance PDA Dai Data After is: ", allowancePDADaiDataAfter.data.toString());
+    //const allowancePDADaiDataAfter = await provider.connection.getAccountInfo(allowancePDADai);
+    //console.log("The Allowance PDA Dai Data After is: ", allowancePDADaiDataAfter.data.toString());
     //const collateralizableContract1Data = await program.account.collateralizableContracts
       //.fetch(collateralizableContract1.publicKey);
     
@@ -311,18 +323,132 @@ describe("Collateral Vault", () => {
     //);
     //const tokenRegistryData = await program.account.
 
-    const accountBalanceDaiCContract1Data = await program.account.accountsBalance.fetch(accountBalancePDADai);
-
+  //const accountBalanceDaiCContract1Data = await program.account.accountsBalance.fetch(accountBalancePDADai);
+    const accountsBalanceDaiCContract1Data = await provider.connection.getAccountInfo(collateralizableContract1.publicKey);
+      //console.log("The Accounts Balance is: ", accountsBalanceDaiCContract1Data.data);
     //console.log("Collateralizable Contract 1 Data is: ", collateralizableContract1Data);
     //console.log("Collateralizable Contract 1 Allowance Data is: ", collateralizableContract1AllowanceDAIData);
-    console.log("Account Balance DAI for CC 1 is: ", accountBalanceDaiCContract1Data);
-    console.log("Account Collateral Balance Available is: ", accountBalanceDaiCContract1Data.collateralBalance.available.toNumber());
-    console.log("Account Collateral Balance Reserved is : ", accountBalanceDaiCContract1Data.collateralBalance.reserved.toNumber());
+    //console.log("Account Balance DAI for CC 1 is: ", accountBalanceDaiCContract1Data);
+    //console.log("Account Collateral Balance Available is: ", accountBalanceDaiCContract1Data.collateralBalance.available.toNumber());
+    //console.log("Account Collateral Balance Reserved is : ", accountBalanceDaiCContract1Data.collateralBalance.reserved.toNumber());
     
   })
 
 
   it("TEST 5 ::: Deposit To Account Function Call Testing", async () => {})
 
-  it("TEST 6 ::: Reserve Collateral Function Call Testing", async () => {})
+  it("TEST 6 ::: Reserve Collateral Function Call Testing", async () => {
+
+    // Set PDAs
+    const [accountBalancePDAUSDc, ] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("account_balance_pda"),
+        callerOfDeposit.publicKey.toBuffer(),
+        usdcTokenMint.toBuffer()
+      ],
+      program.programId
+    );
+    const [accountBalancePDADai, ] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("account_balance_pda"),
+        callerOfDeposit.publicKey.toBuffer(),
+        daiTokenMint.toBuffer()
+      ],
+      program.programId
+    );
+
+    const [allowancePDAUsdc, ] = PublicKey.findProgramAddressSync(
+      [
+        callerOfDeposit.publicKey.toBuffer(),
+        collateralizableContract1.publicKey.toBuffer(),
+        usdcTokenMint.toBuffer()
+      ],
+      program.programId
+    );
+  
+    const [allowancePDADai, ] = PublicKey.findProgramAddressSync(
+      [
+        callerOfDeposit.publicKey.toBuffer(),
+        collateralizableContract1.publicKey.toBuffer(),
+        daiTokenMint.toBuffer()
+      ],
+      program.programId
+    );
+
+    const [collateralizableContractsPDA, ] = PublicKey.findProgramAddressSync(
+      [Buffer.from("collateralizable_contracts")],
+      program.programId
+    );
+
+    const [tokenRegistryPDA, ] = PublicKey.findProgramAddressSync(
+        [Buffer.from("supported_token_registry")],
+        program.programId
+    );
+
+    const [collateralReservationsNoncePDA, ] = PublicKey.findProgramAddressSync(
+      [Buffer.from("collateral_reservations_nonce")],
+      program.programId
+    );
+
+    const [collateralReservationsPDA1, ] = PublicKey.findProgramAddressSync(
+      [Buffer.from("collateral_reservations"), new BN(1).toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+
+    const [collateralReservationsPDA2, ] = PublicKey.findProgramAddressSync(
+      [Buffer.from("collateral_reservations"), new BN(1).toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+
+    // Call Instruction
+    await program.methods
+      .reserveCollateralExt(callerOfDeposit.publicKey, new BN(150 * 10 ** 6))
+      .accounts({
+        accountAddress: callerOfDeposit.publicKey,
+        reservingContract: collateralizableContract1.publicKey,
+        tokenAddress: usdcTokenMint,
+        //@ts-ignore
+        tokensRegistry: tokenRegistryPDA,
+        collateralizableContracts: collateralizableContractsPDA,
+        accountBalancePda: accountBalancePDAUSDc,
+        accountCollateralizableAllowance: allowancePDAUsdc,
+        collateralReservationsNonce: collateralReservationsNoncePDA,
+        collateralReservations: collateralReservationsPDA1,
+        systemProgram: SystemProgram.programId
+      })
+      .signers([collateralizableContract1])
+      .rpc();
+
+    /*await program.methods
+      .reserveCollateralExt(callerOfDeposit.publicKey, new BN(150))
+      .accounts({
+        accountAddress: callerOfDeposit.publicKey,
+        reservingContract: collateralizableContract1.publicKey,
+        tokenAddress: daiTokenMint,
+        //@ts-ignore
+        tokensRegistry: tokenRegistryPDA,
+        collateralizableContracts: collateralizableContractsPDA,
+        accountBalancePda: accountBalancePDADai,
+        accountCollateralizableAllowance: allowancePDADai,
+        collateralReservationsNonce: collateralReservationsNoncePDA,
+        collateralReservations: collateralReservationsPDA2,
+        systemProgram: SystemProgram.programId
+      })
+      .signers([collateralizableContract1])
+      .rpc();*/
+
+      const accountBalanceUSDCdata = await program.account.accountsBalance.fetch(accountBalancePDAUSDc);
+      const accountBalanceDaidata = await program.account.accountsBalance.fetch(accountBalancePDADai);
+      const allowanceDaiInfo = await program.account.accountCollateralizableAllowance.fetch(allowancePDADai);
+      const allowanceUsdcInfo = await program.account.accountCollateralizableAllowance.fetch(allowancePDAUsdc);
+
+      console.log("The Available USDC Collateral Balance Is: ", accountBalanceUSDCdata.collateralBalance.available.toNumber());
+      console.log("The Reserved USDC Collateral Balance Is: ", accountBalanceUSDCdata.collateralBalance.reserved.toNumber());
+      console.log("The Available DAI Collateral Balance Is: ", accountBalanceDaidata.collateralBalance.available.toNumber());
+      console.log("The Reserved DAI Collateral Balance Is : ", accountBalanceDaidata.collateralBalance.reserved.toNumber());
+
+      console.log("The DAI Allowance On The Collateralizable Contract 1 is: ", allowanceDaiInfo.currentAllowance.toNumber());
+      console.log("The USDC Allowance On The Collateralizable Contract 1 is: ", allowanceUsdcInfo.currentAllowance.toNumber());
+      
+  })
 });

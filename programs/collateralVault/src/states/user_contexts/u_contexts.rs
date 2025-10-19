@@ -76,7 +76,7 @@ impl <'info> DepositAndApprove<'info> {
 
 
 #[derive(Accounts)]
-#[instruction(collateralizable_contract_address: Pubkey)]
+//#[instruction(collateralizable_contract_address: Pubkey)]
 pub struct ReserveCollateral<'info> {
     #[account(mut)]
     /// CHECK: Safe To Use
@@ -108,14 +108,14 @@ pub struct ReserveCollateral<'info> {
         seeds = [b"account_balance_pda", account_address.key().as_ref(), token_address.key().as_ref()],
         bump
     )]
-    pub account_balance_pda: AccountLoader<'info, AccountsBalance>,
+    pub account_balance_pda: Account/*Loader*/<'info, AccountsBalance>,
 
-    #[account(
+     #[account(
         mut,
-        seeds = [account_address.key().as_ref(), collateralizable_contract_address.key().as_ref(), token_address.key().as_ref()],
+        seeds = [account_address.key().as_ref(), reserving_contract.key().as_ref(), token_address.key().as_ref()],
         bump
     )]
-    pub account_collateralizable_allowance: Account<'info, AccountCollateralizableAllowance>,
+    pub account_collateralizable_allowance: Account/*Loader*/<'info, AccountCollateralizableAllowance>,
 
     #[account(
         mut,
@@ -167,12 +167,12 @@ impl<'info> ReserveCollateral<'info> {
         require!(self.collateralizable_contracts.collaterizable_contracts.contains(&self.reserving_contract.key()),
         CollateralVaultError::UnapprovedCollateralizableContract);
 
-        let approved_amount: u128 = self.account_collateralizable_allowance.current_allowance as u128;
-        
+        let approved_amount: u128 = self.account_collateralizable_allowance./*load()?.*/current_allowance as u128;
+        msg!("The Current Allowance On This Contract is: {}", approved_amount);
         require!(approved_amount > amount, CollateralVaultError::InsufficientAllowance);
 
         // Update Allowance
-        self.account_collateralizable_allowance.current_allowance = approved_amount.checked_sub(amount).unwrap() as u64;
+        self.account_collateralizable_allowance./*load_mut()?.*/current_allowance = approved_amount.checked_sub(amount).unwrap() as u64;
 
         Ok(())
     }

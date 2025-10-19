@@ -30,16 +30,16 @@ fn reserve_collateral_internal<'info>(ctx: &mut Context<'_, '_, 'info, 'info, Re
 
         ctx.accounts.require_collateralizable_and_decrease_approved_amount(claimable_collateral as u128)?;
 
-        let available_amount = ctx.accounts.account_balance_pda.load()?.collateral_balance.available;
-        require!( reserved_collateral > available_amount, CollateralVaultError::InsufficientCollateral);
+        let available_amount = ctx.accounts.account_balance_pda./*load()?.*/collateral_balance.available;
+        require!( available_amount >= reserved_collateral, CollateralVaultError::InsufficientCollateral);
 
         // @dev sanity-check
         // UPDATE AVAILABLE AND RESERVED
-        require!(claimable_collateral > reserved_collateral, CollateralVaultError::InsufficientCollateral);
-        ctx.accounts.account_balance_pda.load_mut()?.collateral_balance.available = 
-            ctx.accounts.account_balance_pda.load_mut()?.collateral_balance.available - reserved_collateral;
-        ctx.accounts.account_balance_pda.load_mut()?.collateral_balance.reserved = 
-            ctx.accounts.account_balance_pda.load_mut()?.collateral_balance.reserved + reserved_collateral;
+        require!(reserved_collateral >= claimable_collateral, CollateralVaultError::InsufficientCollateral);
+        ctx.accounts.account_balance_pda./*load_mut()?.*/collateral_balance.available = 
+            ctx.accounts.account_balance_pda/*.load_mut()?*/.collateral_balance.available - reserved_collateral;
+        ctx.accounts.account_balance_pda./*load_mut()?.*/collateral_balance.reserved = 
+            ctx.accounts.account_balance_pda./*load_mut()?.*/collateral_balance.reserved + reserved_collateral;
 
         let withdrawal_fee = WITHDRAWAL_FEE_BASIS_POINTS as u16;
 
