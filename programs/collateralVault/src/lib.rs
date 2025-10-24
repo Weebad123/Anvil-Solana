@@ -78,6 +78,24 @@ pub mod collateral_vault {
         
         Ok(total_collateral_released)
     }
+
+
+    // RESERVE CLAIMABLE COLLATERAL
+    pub fn reserve_claimable_collateral<'info>(ctx: Context<'_, '_, 'info, 'info, ReserveCollateral<'info>>, account_address: Pubkey,
+        claimable_amount: u128) -> Result<(u64, u64)> {
+
+            let mut ctx = ctx;
+            let (total_amount_reserved, reservation_id) = instructions::reserve_claimable_collateral(&mut ctx, account_address, claimable_amount)?;
+
+            Ok((total_amount_reserved, reservation_id))
+        }
+
+    pub fn pool_collateral(ctx: Context<PoolCollateral>, amount: u128) -> Result<()> {
+
+        instructions::pool_collateral(ctx, amount)?;
+
+        Ok(())
+    }
 }
 
 

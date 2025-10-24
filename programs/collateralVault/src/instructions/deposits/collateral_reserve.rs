@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 use crate::utils::pricing::amount_before_fee;
 
 use crate::{states::{errors::*, user_contexts::*, constants::*}, /*AccountCollateralizableAllowance, AccountsBalance, */
-CollateralReservations};
+CollateralReservations, utils::CollateralUtils};
 
 
 pub fn reserve_collateral<'info>(ctx: &mut Context<'_, '_, 'info, 'info, ReserveCollateral<'info>>, 
@@ -22,7 +22,7 @@ pub fn reserve_collateral<'info>(ctx: &mut Context<'_, '_, 'info, 'info, Reserve
     }
 
 
-fn reserve_collateral_internal<'info>(ctx: &mut Context<'_, '_, 'info, 'info, ReserveCollateral<'info>>,
+pub fn reserve_collateral_internal<'info>(ctx: &mut Context<'_, '_, 'info, 'info, ReserveCollateral<'info>>,
     account_address: Pubkey, reserved_collateral: u64, claimable_collateral: u64) -> 
     Result<u64> {
 
