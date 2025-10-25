@@ -102,7 +102,7 @@ pub struct ReleaseAllCollateral<'info> {
     #[account(
         mut,
         constraint = reserving_contract.key() == collateral_reservations.reserving_contract
-        @ CollateralVaultError::UnapprovedCollateralizableContract
+        @ CollateralVaultError::UnauthorizedCollateralizableContract
     )]
     pub reserving_contract: Signer<'info>,
 
@@ -220,3 +220,177 @@ impl<'info> CollateralUtils<'info> for PoolCollateral<'info> {
 
 }
 
+
+#[derive(Accounts)]
+pub struct TransferCollateral<'info> {
+
+    /// CHECK: SAFE TO USE
+    #[account(
+        mut,
+    )]
+    pub destination_address: AccountInfo<'info>,
+
+    /// CHECK: SAFE TO USE
+    #[account(
+        mut,
+        signer
+    )]
+    pub account_address: AccountInfo<'info>,
+
+    /// CHECK: SAFE TO USE
+    #[account()]
+    pub token_address: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"supported_token_registry"],
+        bump = tokens_registry.token_registry_bump
+    )]
+    pub tokens_registry: Account<'info, TokenRegistry>,
+
+    #[account(
+        mut,
+        seeds = [b"collateralizable_contracts"],
+        bump = collateralizable_contracts.collaterizable_contracts_bump,
+    )]
+    pub collateralizable_contracts: Account<'info, CollateralizableContracts>,
+
+    #[account(
+        mut,
+        seeds = [b"account_balance_pda", account_address.key().as_ref(), token_address.key().as_ref()],
+        bump
+    )]
+    pub account_balance_pda_user: Account<'info, AccountsBalance>,
+
+    #[account(
+        mut,
+        seeds = [b"account_balance_pda", destination_address.key().as_ref(), token_address.key().as_ref()],
+        bump
+    )]
+    pub account_balance_pda_contract: Account<'info, AccountsBalance>,
+
+    #[account(
+        mut,
+        seeds = [account_address.key().as_ref(), destination_address.key().as_ref(), token_address.key().as_ref()],
+        bump
+    )]
+    pub account_collateralizable_allowance: Account<'info, AccountCollateralizableAllowance>,
+
+}
+
+impl<'info> CollateralUtils<'info> for TransferCollateral<'info> {
+    fn get_account_address(&self) -> Pubkey {
+        self.account_address.key()
+    }
+
+    fn get_reserving_contract_address(&self) -> Pubkey {
+        self.destination_address.key()
+    }
+
+    fn get_tokens_registry(&self) -> Account<'info, crate::states::accounts::TokenRegistry> {
+        self.tokens_registry.clone()
+    }
+
+    fn get_account_collateralizable_allowance(&self) -> Account<'info, crate::states::accounts::AccountCollateralizableAllowance> {
+        self.account_collateralizable_allowance.clone()
+    }
+
+    fn get_account_balance_pdas(&self) -> (Account<'info, crate::states::accounts::AccountsBalance>, Account<'info, crate::states::accounts::AccountsBalance>) {
+        (self.account_balance_pda_user.clone(), self.account_balance_pda_contract.clone())
+    }
+
+    fn get_collateralizable_contracts(&self) -> Account<'info, crate::states::accounts::CollateralizableContracts> {
+        self.collateralizable_contracts.clone()
+    }
+
+    
+}
+
+
+
+#[derive(Accounts)]
+#[instruction(reservation_id: u64)]
+pub struct ModifyCollateralReservations<'info> {
+
+    #[account(
+        mut,
+        constraint = msg_sender.key() == collateral_reservations.reserving_contract
+        @ CollateralVaultError::UnauthorizedCollateralizableContract
+    )]
+    pub msg_sender: Signer<'info>, 
+
+    #[account(
+        constraint = token_address.key() == collateral_reservations.token_address
+        @ CollateralVaultError::TokenNotSupported
+    )]
+    pub token_address: InterfaceAccount<'info, Mint>,
+
+    /// CHECK : SAFE as validation is done
+    #[account(
+        mut,
+        constraint = account_address.key() == collateral_reservations.account_address
+        @ CollateralVaultError::WrongAccountAddress
+    )]
+    pub account_address: AccountInfo<'info>,
+
+     #[account(
+        mut,
+        seeds = [b"supported_token_registry"],
+        bump = tokens_registry.token_registry_bump
+    )]
+    pub tokens_registry: Account<'info, TokenRegistry>,
+
+    #[account(
+        mut,
+        seeds = [b"collateralizable_contracts"],
+        bump = collateralizable_contracts.collaterizable_contracts_bump,
+    )]
+    pub collateralizable_contracts: Account<'info, CollateralizableContracts>,
+
+    #[account(
+        mut,
+        seeds = [b"collateral_reservations", reservation_id.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub collateral_reservations: Account<'info, CollateralReservations>,
+
+    #[account(
+        mut,
+        seeds = [b"account_balance_pda", account_address.key().as_ref(), token_address.key().as_ref()],
+        bump
+    )]
+    pub account_balance_pda: Account<'info, AccountsBalance>,
+
+     #[account(
+        mut,
+        seeds = [account_address.key().as_ref(), msg_sender.key().as_ref(), token_address.key().as_ref()],
+        bump
+    )]
+    pub account_collateralizable_allowance: Account<'info, AccountCollateralizableAllowance>,
+}
+
+impl<'info> CollateralUtils<'info> for ModifyCollateralReservations<'info> {
+    fn get_account_address(&self) -> Pubkey {
+        self.account_address.key()
+    }
+
+    fn get_account_balance_pdas(&self) -> (Account<'info, crate::states::accounts::AccountsBalance>, Account<'info, crate::states::accounts::AccountsBalance>) {
+        (self.account_balance_pda.clone(), self.account_balance_pda.clone())
+    }
+
+    fn get_account_collateralizable_allowance(&self) -> Account<'info, crate::states::accounts::AccountCollateralizableAllowance> {
+        self.account_collateralizable_allowance.clone()
+    }
+
+    fn get_collateralizable_contracts(&self) -> Account<'info, crate::states::accounts::CollateralizableContracts> {
+        self.collateralizable_contracts.clone()
+    }
+
+    fn get_reserving_contract_address(&self) -> Pubkey {
+        self.msg_sender.key()
+    }
+
+    fn get_tokens_registry(&self) -> Account<'info, crate::states::accounts::TokenRegistry> {
+        self.tokens_registry.clone()
+    }
+}

@@ -18,6 +18,9 @@ pub enum CollateralVaultError {
     #[msg("Collateralizable Contract Is Not Approved By Protocol")]
     UnapprovedCollateralizableContract,
 
+    #[msg("Collateralizable Contract Is Not Authorized To Perform Action")]
+    UnauthorizedCollateralizableContract,
+
     #[msg("Token Addresses And Token Amounts Mismatch")]
     MismatchedTokenAddressesAndAmountsLength,
 
@@ -56,4 +59,7 @@ pub enum CollateralVaultError {
 
     #[msg("Provided Account Address Not Found On Reservation")]
     WrongAccountAddress,
+
+    #[msg("Provided Collateral Reservation Does Not Exist")]
+    CollateralReservationNotFound,
 }

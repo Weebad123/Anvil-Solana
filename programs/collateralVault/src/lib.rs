@@ -90,12 +90,30 @@ pub mod collateral_vault {
             Ok((total_amount_reserved, reservation_id))
         }
 
+    // POOL COLLATERAL INSTRUCTION
     pub fn pool_collateral(ctx: Context<PoolCollateral>, amount: u128) -> Result<()> {
 
         instructions::pool_collateral(ctx, amount)?;
 
         Ok(())
     }
+
+    
+    // TRANSFER COLLATERAL INSTRUCTION
+    pub fn transfer_collateral(ctx: Context<TransferCollateral>, amount: u128) -> Result<()> {
+
+        instructions::transfer_collateral(ctx, amount)?;
+        Ok(())
+    }
+
+
+    // MODIFY COLLATERAL RESERVATIONS
+    pub fn modify_collateral_reservations(ctx: Context<ModifyCollateralReservations>, 
+        reservation_id: u64, by_amount: i128) -> Result<(u128, u128)> {
+
+            let (reserved_collateral, claimable_collateral) = instructions::modify_collateral_reservations(ctx, reservation_id, by_amount)?;
+            Ok((reserved_collateral, claimable_collateral))
+        }
 }
 
 

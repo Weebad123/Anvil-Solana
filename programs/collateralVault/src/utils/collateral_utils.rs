@@ -75,6 +75,7 @@ pub trait CollateralUtils<'info> {
 
         user_account_balance_pda.collateral_balance.available = user_account_balance_pda
             .collateral_balance.available.checked_sub(amount as u64).unwrap();
+        
         Ok(())
     }
 }
