@@ -114,6 +114,16 @@ pub mod collateral_vault {
             let (reserved_collateral, claimable_collateral) = instructions::modify_collateral_reservations(ctx, reservation_id, by_amount)?;
             Ok((reserved_collateral, claimable_collateral))
         }
+
+    
+    // MODIFY COLLATERALIZABLE TOKEN ALLOWANCE
+    pub fn modify_collateralizable_token_allowance(ctx: Context<ModifyCollateralizableTokenAllowance>,
+        by_amount: i64) -> Result<()> {
+
+            instructions::modify_collateralizable_token_allowance(ctx, by_amount)?;
+            
+            Ok(())
+        }
 }
 
 

@@ -5,6 +5,7 @@ pub mod claimable_collateral_reserve;
 pub mod collateral_pool;
 pub mod collateral_transfer;
 pub mod collateral_reservations_modify;
+pub mod collateralizable_token_allowance_modify;
 
 pub use deposit_functions::*;
 pub use collateral_reserve::*;
@@ -13,3 +14,4 @@ pub use claimable_collateral_reserve::*;
 pub use collateral_pool::*;
 pub use collateral_transfer::*;
 pub use collateral_reservations_modify::*;
+pub use collateralizable_token_allowance_modify::*;

@@ -394,3 +394,79 @@ impl<'info> CollateralUtils<'info> for ModifyCollateralReservations<'info> {
         self.tokens_registry.clone()
     }
 }
+
+
+#[derive(Accounts)]
+pub struct ModifyCollateralizableTokenAllowance<'info> {
+    #[account(
+        mut,
+        constraint = collateralizable_contracts.collaterizable_contracts.contains(&reserving_contract.key())
+        @CollateralVaultError::UnapprovedCollateralizableContract
+    )]
+    pub reserving_contract: Signer<'info>,
+
+    /// CHECK: SAFE TO USE
+    #[account(
+        mut,
+    )]
+    pub account_address: AccountInfo<'info>,
+
+    #[account()]
+    pub token_address: InterfaceAccount<'info, Mint>,
+
+    #[account(
+        mut,
+        seeds = [b"supported_token_registry"],
+        bump = tokens_registry.token_registry_bump
+    )]
+    pub tokens_registry: Account<'info, TokenRegistry>,
+
+    #[account(
+        mut,
+        seeds = [b"collateralizable_contracts"],
+        bump = collateralizable_contracts.collaterizable_contracts_bump,
+    )]
+    pub collateralizable_contracts: Account<'info, CollateralizableContracts>,
+
+    #[account(
+        mut,
+        seeds = [account_address.key().as_ref(), reserving_contract.key().as_ref(), token_address.key().as_ref()],
+        bump
+    )]
+    pub account_collateralizable_allowance: Account<'info, AccountCollateralizableAllowance>,
+
+}
+
+impl<'info> ModifyCollateralizableTokenAllowance<'info> {
+    pub fn authorized_modify_collateralizable_token_allowance(
+        &mut self, by_amount: i64
+    ) -> Result<()> {
+
+        let mut new_allowance: u64;
+
+    // GET ACCOUNT_COLLATERALIZABLE_TOKEN_ALLOWANCES
+    let current_allowance = 
+        self.account_collateralizable_allowance.current_allowance;
+    if by_amount > 0 {
+        new_allowance = current_allowance.wrapping_add(by_amount as u64);
+
+        if new_allowance < current_allowance {
+            // This means there was overflow, but the intention was to increase allowance, so we set allowance to highest integer type
+            new_allowance = u64::MAX;
+        }
+    } else {
+        new_allowance = current_allowance.wrapping_sub(by_amount.wrapping_abs() as u64);
+
+        if new_allowance > current_allowance {
+            // This means there was underflow, but the intentin was to decrease allowance, so we set the allowance to zero
+            new_allowance = 0;
+        }
+    }
+
+    // Update New Allowance
+    if new_allowance != current_allowance {
+        self.account_collateralizable_allowance.current_allowance = new_allowance;
+    }
+        Ok(())
+    }
+}

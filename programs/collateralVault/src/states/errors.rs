@@ -62,4 +62,7 @@ pub enum CollateralVaultError {
 
     #[msg("Provided Collateral Reservation Does Not Exist")]
     CollateralReservationNotFound,
+
+    #[msg("Provided Amount Cannot Be Zero")]
+    ZeroAmount,
 }
