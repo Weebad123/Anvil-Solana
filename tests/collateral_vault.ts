@@ -157,7 +157,7 @@ describe("Collateral Vault", () => {
   })
 
 
-  it("TEST 4 :::   Deposit And Approve Function Call Testing", async () => {
+  it("TEST 4 :::   Deposit And Approve ", async () => {
     
     // Get PDAs
     const [collateralizableContractsPDA, collateralizableContractsBump] = PublicKey.findProgramAddressSync(
@@ -335,9 +335,9 @@ describe("Collateral Vault", () => {
   })
 
 
-  it("TEST 5 ::: Deposit To Account Function Call Testing", async () => {})
+  it("TEST 5 ::: Deposit To Account", async () => {})
 
-  it("TEST 6 ::: Reserve Collateral Function Call Testing", async () => {
+  it("TEST 6 ::: Reserve Collateral ", async () => {
 
     // Set PDAs
     const [accountBalancePDAUSDc, ] = PublicKey.findProgramAddressSync(
@@ -475,7 +475,7 @@ describe("Collateral Vault", () => {
       
   })
 
-  it("TEST 7 :::  Release All Collateral Instruction Testing", async() => {
+  it("TEST 7 :::  Release All Collateral", async() => {
 
     // Set Up PDAs
     const [collateralReservationsPDA2, ] = PublicKey.findProgramAddressSync(
@@ -514,4 +514,122 @@ describe("Collateral Vault", () => {
     expect(collateralReservationsData).to.eq(null);
 
   })
+
+
+  it("TEST 8 ::: Reserve Claimable Collateral", async () => {
+
+     // Set PDAs
+    const [accountBalancePDAUSDc, ] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("account_balance_pda"),
+        callerOfDeposit.publicKey.toBuffer(),
+        usdcTokenMint.toBuffer()
+      ],
+      program.programId
+    );
+    const [accountBalancePDADai, ] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("account_balance_pda"),
+        callerOfDeposit.publicKey.toBuffer(),
+        daiTokenMint.toBuffer()
+      ],
+      program.programId
+    );
+
+    const [allowancePDAUsdc, ] = PublicKey.findProgramAddressSync(
+      [
+        callerOfDeposit.publicKey.toBuffer(),
+        collateralizableContract1.publicKey.toBuffer(),
+        usdcTokenMint.toBuffer()
+      ],
+      program.programId
+    );
+  
+    const [allowancePDADai, ] = PublicKey.findProgramAddressSync(
+      [
+        callerOfDeposit.publicKey.toBuffer(),
+        collateralizableContract1.publicKey.toBuffer(),
+        daiTokenMint.toBuffer()
+      ],
+      program.programId
+    );
+
+    const [collateralizableContractsPDA, ] = PublicKey.findProgramAddressSync(
+      [Buffer.from("collateralizable_contracts")],
+      program.programId
+    );
+
+    const [tokenRegistryPDA, ] = PublicKey.findProgramAddressSync(
+        [Buffer.from("supported_token_registry")],
+        program.programId
+    );
+
+    const [collateralReservationsNoncePDA, ] = PublicKey.findProgramAddressSync(
+      [Buffer.from("collateral_reservations_nonce")],
+      program.programId
+    );
+
+    const [collateralReservationsPDA4, ] = PublicKey.findProgramAddressSync(
+      [Buffer.from("collateral_reservations"), new BN(4).toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+
+    const [collateralReservationsPDA5, ] = PublicKey.findProgramAddressSync(
+      [Buffer.from("collateral_reservations"), new BN(5).toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+
+    // call instruction
+    await program.methods
+      .reserveClaimableCollateral( callerOfDeposit.publicKey ,new BN(20 * 10 ** 6))
+      .accounts({
+        accountAddress: callerOfDeposit.publicKey,
+        reservingContract: collateralizableContract1.publicKey,
+        tokenAddress: usdcTokenMint,
+        //@ts-ignore
+        tokensRegistry: tokenRegistryPDA,
+        collateralizableContracts: collateralizableContractsPDA,
+        accountBalancePda: accountBalancePDAUSDc,
+        accountCollateralizableAllowance: allowancePDAUsdc,
+        collateralReservationsNonce: collateralReservationsNoncePDA,
+        collateralReservations: collateralReservationsPDA4,
+        systemProgram: SystemProgram.programId
+      })
+      .signers([collateralizableContract1])
+      .rpc();
+
+      // Reserve With DAI Token
+    await program.methods
+      .reserveClaimableCollateral( callerOfDeposit.publicKey ,new BN(20 * 10 ** 6))
+      .accounts({
+        accountAddress: callerOfDeposit.publicKey,
+        reservingContract: collateralizableContract1.publicKey,
+        tokenAddress: daiTokenMint,
+        //@ts-ignore
+        tokensRegistry: tokenRegistryPDA,
+        collateralizableContracts: collateralizableContractsPDA,
+        accountBalancePda: accountBalancePDADai,
+        accountCollateralizableAllowance: allowancePDADai,
+        collateralReservationsNonce: collateralReservationsNoncePDA,
+        collateralReservations: collateralReservationsPDA5,
+        systemProgram: SystemProgram.programId
+      })
+      .signers([collateralizableContract1])
+      .rpc();
+
+    // ASSERTIONS HERE
+  })
+
+
+  it("TEST 9 ::: Pool Collateral ", async () => {})
+
+  it("TEST 10 ::: Transfer Collateral ", async () => {})
+
+  it("TEST 11 ::: Modify Collateral Reservations ", async () => {})
+
+  it("TEST 12 ::: Modify Collateralizable Token Allowance ", async () => {})
+
+  it("TEST 13 ::: Withdraw Available ", async () => {})
+
+  it("TEST 14 ::: Claim Collateral ", async () => {})
 });

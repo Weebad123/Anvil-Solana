@@ -65,4 +65,10 @@ pub enum CollateralVaultError {
 
     #[msg("Provided Amount Cannot Be Zero")]
     ZeroAmount,
+
+    #[msg("Balance In Bank Token Vault Is Not Sufficient For Withdrawal")]
+    InsufficientVaultBalance,
+
+    #[msg("Claim Amount Must Not Be Zero")]
+    ClaimAmountZero,
 }

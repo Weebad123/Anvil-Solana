@@ -1,4 +1,6 @@
 use anchor_lang::prelude::*;
+use anchor_spl:: token_interface::{
+    Mint, TokenInterface, TokenAccount, TransferChecked, transfer_checked};
 use crate::states::{self, errors::CollateralVaultError};
 
 pub trait CollateralUtils<'info> {
@@ -76,6 +78,37 @@ pub trait CollateralUtils<'info> {
         user_account_balance_pda.collateral_balance.available = user_account_balance_pda
             .collateral_balance.available.checked_sub(amount as u64).unwrap();
         
+        Ok(())
+    }
+}
+
+
+
+pub trait TransferHelper<'info> {
+    fn get_destination_ata(&self) -> InterfaceAccount<'info, TokenAccount>;
+
+    fn get_source_ata(&self) -> InterfaceAccount<'info, TokenAccount>;
+
+    fn get_token_mint(&self) -> InterfaceAccount<'info, Mint>;
+
+    fn get_token_program(&self) -> Interface<'info, TokenInterface>;
+
+    fn get_transfer_authority(&self) -> AccountInfo<'info>;
+
+    fn transfer_tokens(&self, amount: u128) -> Result<()> {
+
+        let accounts_for_transfer = TransferChecked {
+            from: self.get_source_ata().to_account_info(),
+            to: self.get_destination_ata().to_account_info(),
+            mint: self.get_token_mint().to_account_info(),
+            authority: self.get_transfer_authority().to_account_info(),
+        };
+
+        let transfer_program = self.get_token_program().to_account_info();
+
+        let transfer_cpi = CpiContext::new(transfer_program, 
+        accounts_for_transfer);
+        transfer_checked(transfer_cpi, amount.try_into()?, self.get_token_mint().decimals)?;
         Ok(())
     }
 }

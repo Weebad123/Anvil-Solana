@@ -124,6 +124,27 @@ pub mod collateral_vault {
             
             Ok(())
         }
+
+    
+    // WITHDRAW AVAILABLE FUNDS
+
+    pub fn withdraw_available(ctx: Context<Withdraw>, amount: u128) -> Result<()> {
+
+        instructions::withdraw(ctx, amount)?;
+
+        Ok(())
+    }
+    
+
+    // CLAIM COLLATERAL 
+    pub fn claim_collateral(ctx: Context<ClaimCollateral>, amount_to_receive: u64, 
+        release_remainder: bool) -> Result<(u128, u128)> {
+
+           let (remaining_reserved_collateral, remaining_claimable_collateral) = 
+                instructions::claim_collateral_funds(ctx, amount_to_receive, release_remainder)?;
+
+            Ok((remaining_reserved_collateral, remaining_claimable_collateral))
+        }
 }
 
 
